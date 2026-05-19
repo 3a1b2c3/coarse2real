@@ -1,0 +1,52 @@
+# ------------------------------------------------------------
+# Inference artifacts: model checkpoints / weights
+# ------------------------------------------------------------
+*.safetensors
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.onnx
+*.out
+models/wan/1.3B/
+models/wan/14B/
+
+# ------------------------------------------------------------
+# Inference artifacts: video / audio outputs and inputs
+# ------------------------------------------------------------
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.webm
+*.m4v
+*.mpg
+*.mpeg
+*.wmv
+*.flv
+
+# Keep the shipped example control videos in the release repo.
+!inference/control_videos/
+!inference/control_videos/*.mp4
+
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.ogg
+*.aac
+outputs/
+.gradio_tmp/
+inference/preprocessed_control_videos/
+inference/prompt_enhancement_cache/
+
+# ------------------------------------------------------------
+# Python cache files
+# ------------------------------------------------------------
+__pycache__/
+*.pyc
+*.egg-info/
+
+installed_packages_c2r.txt
+installed_packages_coarse2real.txt
+installed_packages_wan.txt

@@ -1,0 +1,15 @@
+# Low-level GPU stack is managed by c2r-setup.yml (PyTorch/CUDA/FlashAttention).
+gradio>=5.0.0
+transformers==4.57.6
+huggingface_hub==0.36.1
+imageio==2.37.2
+imageio[ffmpeg]
+einops
+sentencepiece
+protobuf
+ftfy
+regex
+safetensors==0.5.3
+numpy==1.23.5
+tqdm
+# For the default inference stack, create the conda env from c2r-setup.yml.
