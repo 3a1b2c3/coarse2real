@@ -27,7 +27,12 @@ os.environ.setdefault("HF_HUB_DOWNLOAD_TIMEOUT", "300")
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 
 REPO_ROOT = Path(__file__).resolve().parent
-CONFIG_PATH = REPO_ROOT / "inference" / "config_1gpu.json"
+CONFIG_PATHS = [
+    REPO_ROOT / "inference" / "config_1gpu.json",
+    REPO_ROOT / "inference" / "config_example.json",
+    REPO_ROOT / "inference" / "config_multigpu_usp.json",
+    REPO_ROOT / "inference" / "config_multigpu_dp.json",
+]
 
 JOBS = [
     {
@@ -75,24 +80,27 @@ def download_one(job: dict) -> Path | None:
 
 
 def patch_config(updates: dict) -> None:
-    if not CONFIG_PATH.exists():
-        print(f"\nConfig not found at {CONFIG_PATH}; skipping patch.")
-        return
-    cfg = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
-    changed = []
-    for key, value in updates.items():
-        old = cfg.get(key)
-        new = str(value).replace("\\", "/")
-        if old != new:
-            cfg[key] = new
-            changed.append((key, old, new))
-    if not changed:
-        print("\nConfig already up to date.")
-        return
-    CONFIG_PATH.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
-    print(f"\nPatched {CONFIG_PATH}:")
-    for key, old, new in changed:
-        print(f"  {key}: {old!r} -> {new!r}")
+    for config_path in CONFIG_PATHS:
+        if not config_path.exists():
+            print(f"\nConfig not found at {config_path}; skipping.")
+            continue
+        cfg = json.loads(config_path.read_text(encoding="utf-8"))
+        changed = []
+        for key, value in updates.items():
+            if key not in cfg:
+                continue
+            old = cfg.get(key)
+            new = str(value).replace("\\", "/")
+            if old != new:
+                cfg[key] = new
+                changed.append((key, old, new))
+        if not changed:
+            print(f"\n{config_path.name}: already up to date.")
+            continue
+        config_path.write_text(json.dumps(cfg, indent=2) + "\n", encoding="utf-8")
+        print(f"\nPatched {config_path}:")
+        for key, old, new in changed:
+            print(f"  {key}: {old!r} -> {new!r}")
 
 
 def main() -> int:
