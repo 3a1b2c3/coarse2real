@@ -41,6 +41,15 @@ JOBS = [
         "config_key": "base_model_dir",
     },
     {
+        # umt5-xxl tokenizer files; c2r's resolve_tokenizer_config walks
+        # base_model_dir/google/umt5-xxl. Pull into the local models/wan dir so
+        # mixed setups (manually staged text encoder + VAE) still resolve.
+        "repo_id": "Wan-AI/Wan2.1-T2V-14B",
+        "allow_patterns": ["google/umt5-xxl/*"],
+        "local_dir": str(REPO_ROOT / "models" / "wan"),
+        "label": "tokenizer",
+    },
+    {
         "repo_id": "gonsaBRK/coarse2real",
         "allow_patterns": ["c2r-dit-backbone-14B.safetensors"],
         "config_key": "dit_path",
@@ -62,12 +71,23 @@ JOBS = [
 
 def download_one(job: dict) -> Path | None:
     repo_id = job["repo_id"]
-    print(f"=== {repo_id}" + (f"   ({job['allow_patterns'][0]})" if job.get("allow_patterns") else "") + " ===")
+    label_suffix = ""
+    if job.get("label"):
+        label_suffix = f"   ({job['label']})"
+    elif job.get("allow_patterns"):
+        label_suffix = f"   ({job['allow_patterns'][0]})"
+    print(f"=== {repo_id}{label_suffix} ===")
+    kwargs = {
+        "repo_id": repo_id,
+        "allow_patterns": job.get("allow_patterns"),
+        # max_workers=1 serializes the per-file downloads to avoid the
+        # tqdm+concurrent.futures TimeoutError seen on Python 3.12.
+        "max_workers": 1,
+    }
+    if job.get("local_dir"):
+        kwargs["local_dir"] = job["local_dir"]
     try:
-        path = snapshot_download(
-            repo_id=repo_id,
-            allow_patterns=job.get("allow_patterns"),
-        )
+        path = snapshot_download(**kwargs)
         print(f"    OK -> {path}")
         return Path(path)
     except GatedRepoError as e:
@@ -111,6 +131,8 @@ def main() -> int:
         if snap_path is None:
             failed.append(job["repo_id"] + (f":{job['allow_patterns'][0]}" if job.get("allow_patterns") else ""))
             continue
+        if "config_key" not in job:
+            continue  # tokenizer-style job — file-staging only, no config patch
         if "config_join" in job:
             updates[job["config_key"]] = snap_path / job["config_join"]
         else:
