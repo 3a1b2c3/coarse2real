@@ -122,18 +122,9 @@ class WanVideoPipeline(torch.nn.Module):
         if not torch.cuda.is_available():
             return
         managed = ("text_encoder", "dit", "vae", "dino_features_extractor")
-        # Always honor `keep`: callers rely on these being on-device before use.
-        for name in managed:
-            if name not in keep:
-                continue
-            model = getattr(self, name, None)
-            if model is not None:
-                model.to(self.device)
-        # Offload everything else only when free VRAM is below the buffer.
-        if self.vram_buffer_gb is not None and self.vram_buffer_gb > 0:
-            free_gb = torch.cuda.mem_get_info()[0] / (1024 ** 3)
-            if free_gb >= self.vram_buffer_gb:
-                return
+        # Offload non-keep models first so VRAM is freed before we bring keep on-device.
+        # Reversing this caused OOM on a 32 GB GPU with the 14B DiT: moving DiT to GPU
+        # while T5/VAE/DINO were still resident pushed allocations past total VRAM.
         for name in managed:
             if name in keep:
                 continue
@@ -141,6 +132,12 @@ class WanVideoPipeline(torch.nn.Module):
             if model is not None:
                 model.to("cpu")
         torch.cuda.empty_cache()
+        for name in managed:
+            if name not in keep:
+                continue
+            model = getattr(self, name, None)
+            if model is not None:
+                model.to(self.device)
 
     def initialize_usp(self):
         self._disable_torch_compile_for_usp()

@@ -1,9 +1,12 @@
+import math
+import sys
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import math
-from typing import Optional, Tuple
 from einops import rearrange
+
 from ..control.dino_control_module import DINO2WanLatentAdapter
 
 try:
@@ -143,6 +146,15 @@ def _flash_attention_guidance(
         return (
             f"No FlashAttention backend is active; using '{selected}'. "
             "No CUDA GPU was detected for attention backend selection."
+        )
+
+    if sys.platform.startswith("win"):
+        # FA2/FA3/FA4 publish no Windows wheels and nvidia-cutlass-dsl (FA4's dep)
+        # ships manylinux only — recommending pip-install on Windows just produces churn.
+        return (
+            f"No FlashAttention backend is active; using '{selected}'. "
+            f"This GPU is {_architecture_label(device)}, but FlashAttention has no Windows wheels — "
+            "SDPA is the only supported backend on this platform."
         )
 
     if capability[0] < 9:

@@ -1,9 +1,11 @@
 import argparse
 import json
+import subprocess
 import time
 from contextlib import nullcontext
 from pathlib import Path
 
+import imageio_ffmpeg
 import torch
 import torch.distributed as dist
 from tqdm import tqdm
@@ -85,6 +87,29 @@ def wait_for_prompt_enhancement_artifacts(out_dir: Path, rank: int, timeout_seco
                 f"Missing: {missing}"
             )
         time.sleep(1.0)
+
+
+def vstack_with_source(generated_path: Path, source_path: Path, out_path: Path) -> None:
+    ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+    # Preprocessed control clips are saved at their native (source) resolution, which differs
+    # from the diffusion output dimensions. scale2ref rescales the source to match the
+    # generated clip so vstack's identical-width requirement is satisfied.
+    filter_complex = (
+        "[1:v][0:v]scale2ref=flags=lanczos[src][gen];"
+        "[gen][src]vstack=inputs=2"
+    )
+    cmd = [
+        ffmpeg,
+        "-y",
+        "-loglevel", "error",
+        "-i", str(generated_path),
+        "-i", str(source_path),
+        "-filter_complex", filter_complex,
+        "-c:v", "libx264",
+        "-pix_fmt", "yuv420p",
+        str(out_path),
+    ]
+    subprocess.run(cmd, check=True)
 
 
 def maybe_prime_prompt_cache(
@@ -253,7 +278,10 @@ def run(config_path: str) -> None:
             out_path = out_dir / file_name
             save_video(video, str(out_path), fps=cfg.fps, video_encoding_quality=cfg.video_encoding_quality)
 
-            record = {**task, "seed": render_seed, "output": str(out_path)}
+            joined_path = out_path.with_name(f"{out_path.stem}_with_source.mp4")
+            vstack_with_source(out_path, Path(task["control_video_path"]), joined_path)
+
+            record = {**task, "seed": render_seed, "output": str(out_path), "joined": str(joined_path)}
             if meta_file is not None:
                 meta_file.write(json.dumps(record, ensure_ascii=False) + "\n")
                 meta_file.flush()
