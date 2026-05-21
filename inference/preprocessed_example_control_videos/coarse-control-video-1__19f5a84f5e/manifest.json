@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "source": {
+    "path": "C:\\workspace\\world\\coarse2real\\inference\\example_control_videos\\coarse-control-video-1.mp4",
+    "size": 1053923,
+    "mtime_ns": 1779249591944336300
+  },
+  "target_fps": 16,
+  "target_num_frames": 21,
+  "short_video_strategy": "pad",
+  "source_fps": 16.0,
+  "source_frame_count": 81,
+  "resampled_frame_count": 81,
+  "usable_frame_count": 63,
+  "clip_paths": [
+    "inference\\preprocessed_example_control_videos\\coarse-control-video-1__19f5a84f5e\\clip_000.mp4",
+    "inference\\preprocessed_example_control_videos\\coarse-control-video-1__19f5a84f5e\\clip_001.mp4",
+    "inference\\preprocessed_example_control_videos\\coarse-control-video-1__19f5a84f5e\\clip_002.mp4"
+  ],
+  "used_original": false,
+  "padded_short_video": false,
+  "dropped_resampled_frames": 18
+}

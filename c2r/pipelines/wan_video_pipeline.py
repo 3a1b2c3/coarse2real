@@ -121,19 +121,24 @@ class WanVideoPipeline(torch.nn.Module):
             return
         if not torch.cuda.is_available():
             return
+        managed = ("text_encoder", "dit", "vae", "dino_features_extractor")
+        # Always honor `keep`: callers rely on these being on-device before use.
+        for name in managed:
+            if name not in keep:
+                continue
+            model = getattr(self, name, None)
+            if model is not None:
+                model.to(self.device)
+        # Offload everything else only when free VRAM is below the buffer.
         if self.vram_buffer_gb is not None and self.vram_buffer_gb > 0:
             free_gb = torch.cuda.mem_get_info()[0] / (1024 ** 3)
-            # Emergency-only behavior: offload only when free VRAM is below the threshold.
             if free_gb >= self.vram_buffer_gb:
                 return
-        managed = ("text_encoder", "dit", "vae", "dino_features_extractor")
         for name in managed:
-            model = getattr(self, name, None)
-            if model is None:
-                continue
             if name in keep:
-                model.to(self.device)
-            else:
+                continue
+            model = getattr(self, name, None)
+            if model is not None:
                 model.to("cpu")
         torch.cuda.empty_cache()
 
